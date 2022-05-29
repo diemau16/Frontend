@@ -1,0 +1,89 @@
+﻿@page "/pagina1"
+
+@inject HttpClient _client;
+
+@using System.Net.Http.Json
+@using Frontend.Data
+
+<h3>Estudiantes</h3>
+
+<MudButton OnClick="(args) => AgregarNuevoRegistro()" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Send" Color="Color.Primary">Añadir</MudButton>
+<MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error">Borrar</MudButton>
+
+<MudDataGrid T="Estudiante" Items="@Estudiantes" ReadOnly="@_readOnly" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+    StartedEditingItem="@StartedEditingItem" CancelledEditingItem="@CancelledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+    Bordered="true" Dense="true" EditTrigger="@(_editTriggerRowClick ? DataGridEditTrigger.OnRowClick : DataGridEditTrigger.Manual)">
+    <Columns>
+        <Column T="Estudiante" Field="idlibro" Title="Id" IsEditable="false" />
+        <Column T="Estudiante" Field="titulo" />
+        <Column T="Estudiante" Field="editorial" />
+        <Column T="Estudiante" Field="autor" />
+        <Column T="Estudiante" Field="pagina" Title="Pagina" />
+        <Column T="Estudiante" Field="descripcion" Title="Descripcion" />
+        <Column T="Estudiante" Hidden="@(_isCellEditMode || _readOnly || _editTriggerRowClick)" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Edit" OnClick="@context.Actions.StartEditingItem" />
+                 <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Delete" OnClick="(args)=> EliminarEvento(context.Item)" />
+            </CellTemplate>
+        </Column>
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private IEnumerable<Estudiante> Estudiantes = new List<Estudiante>();
+    private bool _readOnly;
+    private bool _isCellEditMode;
+    private List<string> _events = new();
+    private bool _editTriggerRowClick;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var elemento = new List<Estudiante>();
+        _client.BaseAddress = new Uri("https://localhost:7084/");
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "Backend/ConsultaEstudiante");
+        var respuesta = await _client.SendAsync(requestMessage);
+
+        if(respuesta.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var responseBody = await respuesta.Content.ReadAsStringAsync();
+            var listasEstudiante = System.Text.Json.JsonSerializer.Deserialize<List<Estudiante>>(responseBody);
+            Estudiantes = listasEstudiante;
+        }
+
+
+    }
+
+    void EliminarEvento(Estudiante item)
+    {
+
+    }
+
+    void AgregarNuevoRegistro()
+    {
+        var elemento = new Estudiante
+            {
+                nombre = "Estudiante",
+                carrera = "Carrera",
+                semestre = 0,
+                correo = "Correo estudiante"
+            };
+        ((List<Estudiante>)Estudiantes).Add(elemento);
+        StateHasChanged();
+    }
+    // events
+    void StartedEditingItem(Estudiante item)
+    {
+        _events.Insert(0, $"Event = StartedEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CancelledEditingItem(Estudiante item)
+    {
+        _events.Insert(0, $"Event = CancelledEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+    //Este servirá para guardar o actualizar registros.
+    void CommittedItemChanges(Estudiante item)
+    {
+        _events.Insert(0, $"Event = CommittedItemChanges, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+}
